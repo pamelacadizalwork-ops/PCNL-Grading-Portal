@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grading Portal — Login</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="page-wrapper">
+  <div class="login-page">
+    <div class="login-card">
+
+      <!-- Logo / Branding -->
+      <div class="login-logo">
+        <div class="icon">🎓</div>
+        <h1>GradeBook</h1>
+        <p>Academic Grading Portal</p>
+      </div>
+
+      <!-- Role Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="teacher" onclick="switchTab('teacher')">Teacher</button>
+        <button class="tab-btn" data-tab="student" onclick="switchTab('student')">Student</button>
+      </div>
+
+      <!-- Alert area -->
+      <div id="alertBox" style="display:none;"></div>
+
+      <!-- Login Form -->
+      <form id="loginForm" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label id="usernameLabel">Username</label>
+          <input type="text" id="username" placeholder="Enter your username" autocomplete="username" required />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn btn-primary" id="loginBtn">
+          Sign In
+        </button>
+      </form>
+
+      <!-- Demo credentials hint -->
+      <div id="demoHint" style="margin-top:20px; padding:12px; background:var(--bg-input); border-radius:var(--radius); border:1px solid var(--border);">
+        <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.06em;">Demo Credentials</p>
+        <div id="demoTeacher">
+          <p style="font-size:0.82rem; color:var(--text);">Username: <strong style="color:var(--amber-light);">teacher</strong></p>
+          <p style="font-size:0.82rem; color:var(--text);">Password: <strong style="color:var(--amber-light);">teach123</strong></p>
+        </div>
+        <div id="demoStudent" style="display:none;">
+          <p style="font-size:0.82rem; color:var(--text);">Username: <strong style="color:var(--amber-light);">STU001</strong> / <strong style="color:var(--amber-light);">STU002</strong> / <strong style="color:var(--amber-light);">STU003</strong></p>
+          <p style="font-size:0.82rem; color:var(--text);">Password: <strong style="color:var(--amber-light);">pass001</strong> / <strong style="color:var(--amber-light);">pass002</strong> / <strong style="color:var(--amber-light);">pass003</strong></p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // Track which role tab is active
+  let activeTab = 'teacher';
+
+  // On page load, check if user is already authenticated
+  window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (res.ok) {
+        const user = await res.json();
+        redirectByRole(user.role);
+      }
+    } catch (e) { /* not logged in, stay on login page */ }
+  });
+
+  /** Switch between Teacher and Student tabs */
+  function switchTab(tab) {
+    activeTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.getElementById('usernameLabel').textContent =
+      tab === 'student' ? 'Student ID' : 'Username';
+    document.getElementById('username').placeholder =
+      tab === 'student' ? 'Enter your Student ID' : 'Enter your username';
+
+    // Toggle demo hints
+    document.getElementById('demoTeacher').style.display = tab === 'teacher' ? '' : 'none';
+    document.getElementById('demoStudent').style.display = tab === 'student' ? '' : 'none';
+
+    clearAlert();
+  }
+
+  /** Handle login form submission */
+  async function handleLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const btn = document.getElementById('loginBtn');
+
+    if (!username || !password) {
+      showAlert('Please enter both username and password.', 'error');
+      return;
+    }
+
+    // Show loading state
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Signing in…';
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showAlert(data.error || 'Login failed.', 'error');
+        return;
+      }
+
+      showAlert(`Welcome, ${data.name}! Redirecting…`, 'success');
+      setTimeout(() => redirectByRole(data.role), 800);
+
+    } catch (err) {
+      showAlert('Network error. Is the server running?', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Sign In';
+    }
+  }
+
+  /** Redirect user to their appropriate dashboard */
+  function redirectByRole(role) {
+    if (role === 'teacher') {
+      window.location.href = '/pages/teacher.html';
+    } else {
+      window.location.href = '/pages/student.html';
+    }
+  }
+
+  /** Display an alert message */
+  function showAlert(message, type) {
+    const box = document.getElementById('alertBox');
+    const icon = type === 'error' ? '⚠️' : type === 'success' ? '✓' : 'ℹ';
+    box.className = `alert alert-${type}`;
+    box.innerHTML = `<span>${icon}</span> ${message}`;
+    box.style.display = 'flex';
+  }
+
+  function clearAlert() {
+    const box = document.getElementById('alertBox');
+    box.style.display = 'none';
+  }
+</script>
+</body>
+</html>

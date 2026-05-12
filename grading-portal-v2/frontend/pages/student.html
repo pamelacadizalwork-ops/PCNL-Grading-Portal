@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Grades — GradeBook</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="page-wrapper">
+
+  <!-- Top Navigation -->
+  <nav class="topnav">
+    <div class="brand">
+      <div class="brand-icon">🎓</div>
+      GradeBook
+    </div>
+    <div class="nav-right">
+      <span class="user-pill">Student: <strong id="studentName">—</strong> &nbsp;|&nbsp; ID: <strong id="studentId">—</strong></span>
+      <button class="btn btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Main Dashboard -->
+  <main class="dashboard">
+
+    <!-- Header -->
+    <div class="dashboard-header">
+      <div>
+        <h2 id="pageTitle">My Grades</h2>
+        <p>Your personal academic report card. Read-only view.</p>
+      </div>
+    </div>
+
+    <!-- Alert area -->
+    <div id="alertBox" style="display:none; margin-bottom:20px;"></div>
+
+    <!-- Stats Row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">GPA Average</div>
+        <div class="stat-value" id="statAvg">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Subjects</div>
+        <div class="stat-value" id="statSubjects">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Highest Grade</div>
+        <div class="stat-value" id="statHigh">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Standing</div>
+        <div class="stat-value" id="statStanding" style="font-size:1.3rem;">—</div>
+      </div>
+    </div>
+
+    <!-- Report Card Tiles -->
+    <div class="card" style="animation: fadeUp 0.4s ease;">
+      <div class="card-header">
+        <h3>📚 Subject Overview</h3>
+        <span style="font-size:0.8rem; color:var(--text-muted);">Current Term</span>
+      </div>
+      <div class="card-body">
+        <div class="report-card" id="reportCard">
+          <!-- Populated by JS -->
+          <div style="text-align:center; padding:32px; color:var(--text-dim); grid-column:1/-1;">
+            <span class="spinner"></span> Loading your grades…
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grades Table -->
+    <div class="card" style="animation: fadeUp 0.5s ease;">
+      <div class="card-header">
+        <h3>📋 Grade Details</h3>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Subject</th>
+                <th>Grade</th>
+                <th>Letter</th>
+                <th>Performance</th>
+              </tr>
+            </thead>
+            <tbody id="gradesBody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Security notice -->
+    <div style="text-align:center; color:var(--text-dim); font-size:0.78rem; padding:16px 0;">
+      🔒 You are viewing only your own data. Grades are managed by your teacher.
+    </div>
+
+  </main>
+</div>
+
+<script>
+  // ─── INIT ───────────────────────────────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', async () => {
+    await checkAuth();
+    await loadMyGrades();
+  });
+
+  /** Verify the session and confirm student role. Redirect if not authenticated. */
+  async function checkAuth() {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (!res.ok) { window.location.href = '/pages/login.html'; return; }
+      const user = await res.json();
+      if (user.role !== 'student') { window.location.href = '/pages/login.html'; return; }
+      document.getElementById('studentName').textContent = user.name;
+      document.getElementById('studentId').textContent   = user.id;
+      document.getElementById('pageTitle').textContent   = `${user.name}'s Grades`;
+    } catch (e) {
+      window.location.href = '/pages/login.html';
+    }
+  }
+
+  /** Fetch this student's grades. The server enforces that only own data is returned. */
+  async function loadMyGrades() {
+    try {
+      const res = await fetch('/api/student/grades', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load grades.');
+      const data = await res.json();
+      renderGrades(data.grades);
+    } catch (err) {
+      showAlert(err.message, 'error');
+    }
+  }
+
+  /** Render the report card tiles and the detail table. */
+  function renderGrades(grades) {
+    if (!grades || grades.length === 0) {
+      document.getElementById('reportCard').innerHTML =
+        `<div class="empty-state" style="grid-column:1/-1;">
+          <div class="empty-icon">📭</div>
+          <p>No grades found. Check back when your teacher uploads grades.</p>
+        </div>`;
+      return;
+    }
+
+    // ── Compute stats ──
+    const avg     = grades.reduce((s, g) => s + g.grade, 0) / grades.length;
+    const highest = Math.max(...grades.map(g => g.grade));
+    const standing = avg >= 90 ? 'Excellent 🌟'
+                   : avg >= 80 ? 'Good 👍'
+                   : avg >= 75 ? 'Passing ✅'
+                   : 'Needs Improvement ⚠️';
+
+    document.getElementById('statAvg').textContent      = avg.toFixed(1);
+    document.getElementById('statSubjects').textContent = grades.length;
+    document.getElementById('statHigh').textContent     = highest;
+    document.getElementById('statStanding').textContent = standing;
+
+    // ── Subject tiles ──
+    const tilesHtml = grades.map((g, i) => {
+      const { letter, cls, color } = gradeToLetter(g.grade);
+      return `
+        <div class="subject-tile" style="animation-delay:${i * 0.07}s;">
+          <div class="subject-name">${g.subject}</div>
+          <div class="subject-grade" style="color:${color};">${g.grade}</div>
+          <span class="subject-letter grade-badge ${cls}">${letter}</span>
+          <div class="progress-bar" style="margin-top:12px;">
+            <div class="progress-fill" style="width:${g.grade}%; background:${color};"></div>
+          </div>
+        </div>`;
+    }).join('');
+    document.getElementById('reportCard').innerHTML = tilesHtml;
+
+    // ── Detail table ──
+    const tbody = document.getElementById('gradesBody');
+    tbody.innerHTML = grades.map(g => {
+      const { letter, cls, color } = gradeToLetter(g.grade);
+      const barWidth = g.grade + '%';
+      return `
+        <tr>
+          <td>${g.subject}</td>
+          <td style="font-weight:600; color:${color};">${g.grade}</td>
+          <td><span class="grade-badge ${cls}">${letter}</span></td>
+          <td style="min-width:140px;">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${barWidth}; background:${color};"></div>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // ─── UTILITIES ───────────────────────────────────────────────────────────────
+
+  function gradeToLetter(grade) {
+    if (grade >= 90) return { letter: 'A', cls: 'grade-a', color: '#6de0a0' };
+    if (grade >= 80) return { letter: 'B', cls: 'grade-b', color: '#f0ad48' };
+    if (grade >= 70) return { letter: 'C', cls: 'grade-c', color: '#80b8e8' };
+    return { letter: 'D', cls: 'grade-d', color: '#e88' };
+  }
+
+  function showAlert(message, type) {
+    const box = document.getElementById('alertBox');
+    box.className = `alert alert-${type}`;
+    box.innerHTML = `⚠️ ${message}`;
+    box.style.display = 'flex';
+  }
+
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    window.location.href = '/pages/login.html';
+  }
+</script>
+</body>
+</html>

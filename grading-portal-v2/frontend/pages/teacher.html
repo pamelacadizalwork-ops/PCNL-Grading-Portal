@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teacher Dashboard — GradeBook</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="page-wrapper">
+
+  <!-- ═══════════════ TOP NAV ═══════════════ -->
+  <nav class="topnav">
+    <div class="brand">
+      <div class="brand-icon">🎓</div>
+      GradeBook
+    </div>
+    <div class="nav-right">
+      <!-- Clickable profile pill opens profile modal -->
+      <button id="profilePill"
+              onclick="openProfileModal()"
+              style="display:flex;align-items:center;gap:8px;background:var(--bg-input);
+                     border:1px solid var(--border);border-radius:20px;padding:4px 14px 4px 5px;
+                     cursor:pointer;color:inherit;">
+        <div id="navAvatar"
+             style="width:26px;height:26px;border-radius:50%;
+                    background:linear-gradient(135deg,var(--amber),var(--amber-dim));
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:.72rem;font-weight:700;color:var(--bg);flex-shrink:0;">T</div>
+        <span id="teacherName" style="font-size:.82rem;color:var(--amber-light);">—</span>
+        <span style="font-size:.65rem;color:var(--text-muted);">✏</span>
+      </button>
+      <button class="btn btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- ═══════════════ DASHBOARD ═══════════════ -->
+  <main class="dashboard">
+
+    <div class="dashboard-header">
+      <div>
+        <h2>Teacher Dashboard</h2>
+        <p>Manage student grades, upload spreadsheets, and track performance.</p>
+      </div>
+    </div>
+
+    <div id="alertBox" style="display:none; margin-bottom:20px;"></div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Total Students</div><div class="stat-value" id="statStudents">—</div></div>
+      <div class="stat-card"><div class="stat-label">Grade Records</div><div class="stat-value" id="statRecords">—</div></div>
+      <div class="stat-card"><div class="stat-label">Class Average</div><div class="stat-value" id="statAvg">—</div></div>
+      <div class="stat-card"><div class="stat-label">Passing Rate</div><div class="stat-value" id="statPass">—</div><div class="stat-sub">Score ≥ 75</div></div>
+    </div>
+
+    <!-- Upload Card -->
+    <div class="card" style="animation:fadeUp .4s ease;">
+      <div class="card-header">
+        <h3>📤 Upload Grades Spreadsheet</h3>
+        <a href="#" onclick="downloadSample();return false;" style="font-size:.82rem;color:var(--amber-light);">⬇ Download Sample CSV</a>
+      </div>
+      <div class="card-body">
+        <div class="upload-zone" id="uploadZone"
+             onclick="document.getElementById('fileInput').click()"
+             ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+          <div class="upload-icon">📊</div>
+          <p>Drag & drop a <strong>CSV file</strong> here, or <strong>click to browse</strong></p>
+          <p style="font-size:.78rem;margin-top:6px;color:var(--text-dim);">
+            Columns: Student ID, Name, Subject, Grade, <span style="color:var(--amber-light);">Password (optional)</span>
+          </p>
+        </div>
+        <input type="file" id="fileInput" accept=".csv" onchange="handleFileSelect(event)" />
+        <div id="uploadActions" class="upload-actions" style="display:none;">
+          <span id="selectedFileName" style="font-size:.875rem;color:var(--text-muted);align-self:center;"></span>
+          <button class="btn btn-primary" style="width:auto;" onclick="uploadFile()" id="uploadBtn">Upload & Process</button>
+          <button class="btn btn-secondary btn-sm" onclick="clearFileSelection()">Cancel</button>
+        </div>
+        <div id="uploadResult" style="display:none;margin-top:14px;"></div>
+      </div>
+    </div>
+
+    <!-- Grades Table Card -->
+    <div class="card" style="animation:fadeUp .5s ease;">
+      <div class="card-header">
+        <h3>📋 All Student Grades</h3>
+        <div class="filter-bar">
+          <input type="text" id="filterSearch" placeholder="Search by name or ID…" oninput="renderTable()" />
+          <select id="filterSubject" onchange="renderTable()">
+            <option value="">All Subjects</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="saveAllEdits()" id="saveAllBtn" style="display:none;">💾 Save All</button>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div class="table-wrap">
+          <table id="gradesTable">
+            <thead>
+              <tr>
+                <th>Student ID</th><th>Name</th><th>Subject</th>
+                <th>Grade</th><th>Letter</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="gradesBody">
+              <tr><td colspan="6">
+                <div class="empty-state"><div class="empty-icon"><span class="spinner"></span></div><p>Loading grades…</p></div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manage Students Card -->
+    <div class="card" style="animation:fadeUp .6s ease;">
+      <div class="card-header">
+        <h3>👥 Manage Student Logins</h3>
+        <span style="font-size:.8rem;color:var(--text-muted);">Set passwords &amp; delete students</span>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Student ID</th><th>Name</th><th>Password Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="studentsMgmtBody">
+              <tr><td colspan="4">
+                <div class="empty-state"><div class="empty-icon"><span class="spinner"></span></div><p>Loading students…</p></div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODAL 1: TEACHER PROFILE
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h3>Profile Settings</h3>
+      <button class="modal-close" onclick="closeProfileModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Avatar + live name preview -->
+      <div class="profile-avatar" id="pmAvatar">T</div>
+      <div class="profile-name"   id="pmNameDisplay">—</div>
+      <div class="profile-role">Teacher</div>
+
+      <!-- Display name -->
+      <div class="form-group">
+        <label>Display Name</label>
+        <input type="text" id="pmName" placeholder="e.g. Ms. Rivera" maxlength="60"
+               oninput="updateAvatarPreview()" />
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-label">Login Credentials</div>
+
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="pmUsername" placeholder="e.g. teacher" maxlength="40" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label>New Password <span style="font-weight:400;text-transform:none;font-size:.78rem;color:var(--text-dim);">(leave blank to keep current)</span></label>
+        <input type="password" id="pmNewPass" placeholder="Enter new password" autocomplete="new-password" />
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="pmConfirmPass" placeholder="Re-enter new password" autocomplete="new-password" />
+      </div>
+
+      <div id="pmAlert" style="display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" onclick="closeProfileModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" style="width:auto;" onclick="saveProfile()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODAL 2: SET STUDENT PASSWORD
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="passwordModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3>Set Student Password</h3>
+      <button class="modal-close" onclick="closePasswordModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Student info bar -->
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg-input);
+                  border:1px solid var(--border);border-radius:var(--radius);margin-bottom:18px;">
+        <div id="pwModalAvatar"
+             style="width:36px;height:36px;border-radius:50%;
+                    background:linear-gradient(135deg,var(--amber),var(--amber-dim));
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:.8rem;font-weight:700;color:var(--bg);flex-shrink:0;">S</div>
+        <div>
+          <div id="pwModalName" style="font-weight:600;font-size:.9rem;color:var(--cream);">—</div>
+          <div id="pwModalId"   style="font-size:.75rem;color:var(--text-muted);">—</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="pwNew" placeholder="Enter new password (min 4 chars)"
+               autocomplete="new-password"
+               onkeydown="if(event.key==='Enter')document.getElementById('pwConfirm').focus()" />
+        <p style="font-size:.72rem;color:var(--text-dim);margin-top:5px;">Share this with the student securely.</p>
+      </div>
+      <div class="form-group">
+        <label>Confirm Password</label>
+        <input type="password" id="pwConfirm" placeholder="Re-enter password"
+               autocomplete="new-password"
+               onkeydown="if(event.key==='Enter')saveStudentPassword()" />
+      </div>
+      <div id="pwAlert" style="display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" onclick="closePasswordModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" style="width:auto;" onclick="saveStudentPassword()">🔑 Set Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODAL 3: DELETE STUDENT (type-to-confirm)
+══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h3 style="color:#e88;">Delete Student</h3>
+      <button class="modal-close" onclick="closeDeleteModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Student info bar -->
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--bg-input);
+                  border:1px solid var(--border);border-radius:var(--radius);margin-bottom:18px;">
+        <div id="delModalAvatar"
+             style="width:36px;height:36px;border-radius:50%;
+                    background:rgba(224,92,92,.15);border:1px solid rgba(224,92,92,.25);
+                    display:flex;align-items:center;justify-content:center;
+                    font-size:.8rem;font-weight:700;color:#e88;flex-shrink:0;">S</div>
+        <div>
+          <div id="delModalName" style="font-weight:600;font-size:.9rem;color:var(--cream);">—</div>
+          <div id="delModalId"   style="font-size:.75rem;color:var(--text-muted);">—</div>
+        </div>
+      </div>
+
+      <div class="danger-box">
+        <p>⚠️ <strong>This action cannot be undone.</strong></p>
+        <p style="margin-top:4px;">Deleting this student removes their login account and <strong id="delGradeCount">all their grades</strong>.</p>
+      </div>
+
+      <div class="form-group">
+        <label>Type the Student ID to confirm</label>
+        <input type="text" id="delConfirmInput" placeholder=""
+               autocomplete="off" oninput="checkDeleteReady()" />
+      </div>
+      <div id="delAlert" style="display:none;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger-outline btn-sm" id="delConfirmBtn"
+              disabled onclick="confirmDelete()">Delete Student</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════ -->
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let allGrades   = [];
+let pendingEdits = {};
+let selectedFile = null;
+let targetStudentId = null; // used by password + delete modals
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  await checkAuth();
+  await Promise.all([loadGrades(), loadStudents()]);
+});
+
+async function checkAuth() {
+  try {
+    const res = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!res.ok) { window.location.href = '/pages/login.html'; return; }
+    const user = await res.json();
+    if (user.role !== 'teacher') { window.location.href = '/pages/login.html'; return; }
+    setNavName(user.name);
+  } catch (e) { window.location.href = '/pages/login.html'; }
+}
+
+// ── NAV AVATAR ─────────────────────────────────────────────────────────────
+function getInitials(name) {
+  return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'T';
+}
+
+function setNavName(name) {
+  document.getElementById('teacherName').textContent = name;
+  document.getElementById('navAvatar').textContent   = getInitials(name);
+}
+
+// ── LOAD DATA ──────────────────────────────────────────────────────────────
+async function loadGrades() {
+  try {
+    const res  = await fetch('/api/teacher/grades', { credentials: 'include' });
+    const data = await res.json();
+    allGrades  = data.grades || [];
+    pendingEdits = {};
+    updateStats();
+    populateSubjectFilter();
+    renderTable();
+  } catch (e) { showAlert('alertBox', 'Failed to load grades.', 'error'); }
+}
+
+async function loadStudents() {
+  try {
+    const res  = await fetch('/api/teacher/students/list', { credentials: 'include' });
+    const data = await res.json();
+    renderStudentsTable(data.students || []);
+  } catch (e) { showAlert('alertBox', 'Failed to load student list.', 'error'); }
+}
+
+// ── STATS ──────────────────────────────────────────────────────────────────
+function updateStats() {
+  const ids   = [...new Set(allGrades.map(g => g.studentId))];
+  const total = allGrades.length;
+  const avg   = total ? (allGrades.reduce((s, g) => s + g.grade, 0) / total).toFixed(1) : '—';
+  const pass  = total ? Math.round(allGrades.filter(g => g.grade >= 75).length / total * 100) + '%' : '—';
+  document.getElementById('statStudents').textContent = ids.length || 0;
+  document.getElementById('statRecords').textContent  = total;
+  document.getElementById('statAvg').textContent      = avg;
+  document.getElementById('statPass').textContent     = pass;
+}
+
+function populateSubjectFilter() {
+  const subjects = [...new Set(allGrades.map(g => g.subject))].sort();
+  const sel = document.getElementById('filterSubject');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Subjects</option>';
+  subjects.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    sel.appendChild(o);
+  });
+  sel.value = cur;
+}
+
+// ── GRADES TABLE ───────────────────────────────────────────────────────────
+function renderTable() {
+  const search  = document.getElementById('filterSearch').value.toLowerCase();
+  const subject = document.getElementById('filterSubject').value;
+  const rows    = allGrades.filter(g => {
+    const ms = !search  || g.studentId.toLowerCase().includes(search) || g.studentName.toLowerCase().includes(search);
+    const mj = !subject || g.subject === subject;
+    return ms && mj;
+  });
+
+  const tbody = document.getElementById('gradesBody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🔍</div><p>No records match your filters.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(g => {
+    const display = pendingEdits[g.id] !== undefined ? pendingEdits[g.id] : g.grade;
+    const { letter, cls } = gradeToLetter(display);
+    const dirty = pendingEdits[g.id] !== undefined;
+    return `<tr data-id="${g.id}" ${dirty ? 'style="background:rgba(212,146,42,.04)"' : ''}>
+      <td style="color:var(--text-muted);font-size:.82rem;">${g.studentId}</td>
+      <td>${g.studentName}</td>
+      <td>${g.subject}</td>
+      <td>
+        <input class="grade-edit-input" type="number" min="0" max="100"
+               value="${display}" data-id="${g.id}"
+               onchange="markPending(${g.id}, this.value)"
+               oninput="liveUpdateBadge(${g.id}, this.value)" />
+      </td>
+      <td><span class="grade-badge ${cls}" id="badge-${g.id}">${letter}</span></td>
+      <td><button class="btn btn-secondary btn-sm" onclick="saveSingle(${g.id})">Save</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function markPending(id, val) {
+  pendingEdits[id] = Number(val);
+  document.getElementById('saveAllBtn').style.display = Object.keys(pendingEdits).length ? '' : 'none';
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  if (row) row.style.background = 'rgba(212,146,42,.04)';
+}
+
+function liveUpdateBadge(id, val) {
+  const badge = document.getElementById(`badge-${id}`);
+  if (!badge) return;
+  const { letter, cls } = gradeToLetter(Number(val));
+  badge.textContent = letter;
+  badge.className   = `grade-badge ${cls}`;
+}
+
+async function saveSingle(id) {
+  const input = document.querySelector(`input[data-id="${id}"]`);
+  if (!input) return;
+  const v = Number(input.value);
+  if (isNaN(v) || v < 0 || v > 100) { showAlert('alertBox', 'Grade must be 0–100.', 'error'); return; }
+
+  const res = await fetch(`/api/teacher/grades/${id}`, {
+    method: 'PUT', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ grade: v })
+  });
+  if (!res.ok) { const e = await res.json(); showAlert('alertBox', e.error, 'error'); return; }
+
+  const idx = allGrades.findIndex(g => g.id === id);
+  if (idx !== -1) allGrades[idx].grade = v;
+  delete pendingEdits[id];
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  if (row) row.style.background = '';
+  document.getElementById('saveAllBtn').style.display = Object.keys(pendingEdits).length ? '' : 'none';
+  updateStats();
+  showAlert('alertBox', 'Grade saved.', 'success');
+}
+
+async function saveAllEdits() {
+  const ids = Object.keys(pendingEdits);
+  for (const id of ids) {
+    const res = await fetch(`/api/teacher/grades/${id}`, {
+      method: 'PUT', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grade: pendingEdits[id] })
+    });
+    if (res.ok) {
+      const idx = allGrades.findIndex(g => g.id === Number(id));
+      if (idx !== -1) allGrades[idx].grade = pendingEdits[id];
+    }
+  }
+  pendingEdits = {};
+  document.getElementById('saveAllBtn').style.display = 'none';
+  updateStats();
+  renderTable();
+  showAlert('alertBox', `${ids.length} record(s) saved.`, 'success');
+}
+
+// ── STUDENTS MANAGEMENT TABLE ──────────────────────────────────────────────
+function renderStudentsTable(students) {
+  const tbody = document.getElementById('studentsMgmtBody');
+  if (!students.length) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">👤</div><p>No students yet. Upload a CSV to register students.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = students.map(s => {
+    const initials = getInitials(s.name);
+    const badge = s.passwordStatus === 'custom'
+      ? `<span class="status-badge status-custom">✓ Custom</span>`
+      : `<span class="status-badge status-default">Default (ID)</span>`;
+    return `<tr>
+      <td style="color:var(--text-muted);font-size:.82rem;">${s.id}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:26px;height:26px;border-radius:50%;background:var(--bg-input);
+               border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+               font-size:.65rem;font-weight:700;color:var(--amber-light);flex-shrink:0;">${initials}</div>
+          ${s.name}
+        </div>
+      </td>
+      <td>${badge}</td>
+      <td style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openPasswordModal('${s.id}','${s.name}')">🔑 Set Password</button>
+        <button class="btn btn-danger-outline btn-sm" onclick="openDeleteModal('${s.id}','${s.name}')">🗑 Delete</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── FILE UPLOAD ────────────────────────────────────────────────────────────
+function handleDragOver(e) { e.preventDefault(); document.getElementById('uploadZone').classList.add('dragging'); }
+function handleDragLeave()  { document.getElementById('uploadZone').classList.remove('dragging'); }
+function handleDrop(e)      { e.preventDefault(); document.getElementById('uploadZone').classList.remove('dragging'); const f = e.dataTransfer.files[0]; if (f) setFile(f); }
+function handleFileSelect(e){ setFile(e.target.files[0]); }
+
+function setFile(f) {
+  if (!f.name.endsWith('.csv')) { showAlert('alertBox', 'Only CSV files are accepted.', 'error'); return; }
+  selectedFile = f;
+  document.getElementById('selectedFileName').textContent = `📄 ${f.name} (${(f.size/1024).toFixed(1)} KB)`;
+  document.getElementById('uploadActions').style.display = 'flex';
+  document.getElementById('uploadResult').style.display  = 'none';
+}
+
+function clearFileSelection() {
+  selectedFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('uploadActions').style.display = 'none';
+  document.getElementById('uploadResult').style.display  = 'none';
+}
+
+async function uploadFile() {
+  if (!selectedFile) return;
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Uploading…';
+
+  const fd = new FormData();
+  fd.append('file', selectedFile);
+  try {
+    const res  = await fetch('/api/teacher/upload', { method: 'POST', credentials: 'include', body: fd });
+    const data = await res.json();
+    const el   = document.getElementById('uploadResult');
+    el.style.display = 'block';
+    if (!res.ok) {
+      el.className = 'alert alert-error';
+      el.innerHTML = `⚠️ ${data.error}${data.details ? '<ul style="margin-top:6px">' + data.details.map(d=>`<li>${d}</li>`).join('') + '</ul>' : ''}`;
+    } else {
+      el.className = 'alert alert-success';
+      el.innerHTML = `✓ ${data.message}`;
+      clearFileSelection();
+      await Promise.all([loadGrades(), loadStudents()]);
+    }
+  } catch (e) {
+    showAlert('alertBox', 'Upload failed. Is the server running?', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Upload & Process';
+  }
+}
+
+function downloadSample() {
+  const csv = `Student ID,Name,Subject,Grade,Password\nSTU004,Diana Lim,Mathematics,85,diana2024\nSTU004,Diana Lim,Science,79,diana2024\nSTU004,Diana Lim,English,88,diana2024\nSTU005,Ethan Park,Mathematics,72,ethan2024\nSTU005,Ethan Park,Science,68,ethan2024\nSTU005,Ethan Park,English,76,ethan2024`;
+  const a = document.createElement('a');
+  a.href     = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'sample_grades.csv';
+  a.click();
+}
+
+// ── PROFILE MODAL ──────────────────────────────────────────────────────────
+async function openProfileModal() {
+  const res  = await fetch('/api/auth/me', { credentials: 'include' });
+  const user = await res.json();
+  document.getElementById('pmName').value    = user.name;
+  document.getElementById('pmUsername').value= user.username || '';
+  document.getElementById('pmNewPass').value = '';
+  document.getElementById('pmConfirmPass').value = '';
+  document.getElementById('pmAvatar').textContent      = getInitials(user.name);
+  document.getElementById('pmNameDisplay').textContent = user.name;
+  hideModalAlert('pmAlert');
+  document.getElementById('profileModal').classList.add('open');
+}
+
+function updateAvatarPreview() {
+  const v = document.getElementById('pmName').value.trim();
+  document.getElementById('pmAvatar').textContent      = getInitials(v || 'T');
+  document.getElementById('pmNameDisplay').textContent = v || '—';
+}
+
+function closeProfileModal() { document.getElementById('profileModal').classList.remove('open'); }
+
+async function saveProfile() {
+  const name        = document.getElementById('pmName').value.trim();
+  const username    = document.getElementById('pmUsername').value.trim();
+  const newPassword = document.getElementById('pmNewPass').value;
+  const confirmPass = document.getElementById('pmConfirmPass').value;
+
+  if (!name)     { showModalAlert('pmAlert', 'Display name is required.', 'error'); return; }
+  if (!username) { showModalAlert('pmAlert', 'Username is required.', 'error'); return; }
+  if (newPassword && newPassword !== confirmPass) {
+    showModalAlert('pmAlert', 'Passwords do not match.', 'error'); return;
+  }
+  if (newPassword && newPassword.length < 4) {
+    showModalAlert('pmAlert', 'Password must be at least 4 characters.', 'error'); return;
+  }
+
+  const res  = await fetch('/api/teacher/profile', {
+    method: 'PUT', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, username, newPassword: newPassword || undefined, confirmPassword: confirmPass || undefined })
+  });
+  const data = await res.json();
+  if (!res.ok) { showModalAlert('pmAlert', data.error, 'error'); return; }
+
+  setNavName(data.user.name);
+  closeProfileModal();
+  showAlert('alertBox', 'Profile updated successfully.', 'success');
+}
+
+// ── SET STUDENT PASSWORD MODAL ─────────────────────────────────────────────
+function openPasswordModal(studentId, studentName) {
+  targetStudentId = studentId;
+  document.getElementById('pwModalName').textContent   = studentName;
+  document.getElementById('pwModalId').textContent     = `ID: ${studentId}`;
+  document.getElementById('pwModalAvatar').textContent = getInitials(studentName);
+  document.getElementById('pwNew').value     = '';
+  document.getElementById('pwConfirm').value = '';
+  hideModalAlert('pwAlert');
+  document.getElementById('passwordModal').classList.add('open');
+  setTimeout(() => document.getElementById('pwNew').focus(), 120);
+}
+
+function closePasswordModal() { document.getElementById('passwordModal').classList.remove('open'); }
+
+async function saveStudentPassword() {
+  const password        = document.getElementById('pwNew').value;
+  const confirmPassword = document.getElementById('pwConfirm').value;
+
+  if (!password)          { showModalAlert('pwAlert', 'Password is required.', 'error'); return; }
+  if (password.length < 4){ showModalAlert('pwAlert', 'Password must be at least 4 characters.', 'error'); return; }
+  if (password !== confirmPassword){ showModalAlert('pwAlert', 'Passwords do not match.', 'error'); return; }
+
+  const res  = await fetch(`/api/teacher/students/${targetStudentId}/password`, {
+    method: 'PUT', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password, confirmPassword })
+  });
+  const data = await res.json();
+  if (!res.ok) { showModalAlert('pwAlert', data.error, 'error'); return; }
+
+  closePasswordModal();
+  await loadStudents();
+  showAlert('alertBox', data.message, 'success');
+}
+
+// ── DELETE STUDENT MODAL ───────────────────────────────────────────────────
+function openDeleteModal(studentId, studentName) {
+  targetStudentId = studentId;
+  const gradeCount = allGrades.filter(g => g.studentId === studentId).length;
+  document.getElementById('delModalName').textContent   = studentName;
+  document.getElementById('delModalId').textContent     = `ID: ${studentId}`;
+  document.getElementById('delModalAvatar').textContent = getInitials(studentName);
+  document.getElementById('delGradeCount').textContent  =
+    gradeCount > 0 ? `all ${gradeCount} grade record(s)` : 'their account (no grades found)';
+  document.getElementById('delConfirmInput').value       = '';
+  document.getElementById('delConfirmInput').placeholder = studentId;
+  const btn = document.getElementById('delConfirmBtn');
+  btn.disabled = true;
+  hideModalAlert('delAlert');
+  document.getElementById('deleteModal').classList.add('open');
+  setTimeout(() => document.getElementById('delConfirmInput').focus(), 120);
+}
+
+function checkDeleteReady() {
+  const val = document.getElementById('delConfirmInput').value.trim();
+  document.getElementById('delConfirmBtn').disabled = (val !== targetStudentId);
+}
+
+function closeDeleteModal() { document.getElementById('deleteModal').classList.remove('open'); }
+
+async function confirmDelete() {
+  const res  = await fetch(`/api/teacher/students/${targetStudentId}`, {
+    method: 'DELETE', credentials: 'include'
+  });
+  const data = await res.json();
+  if (!res.ok) { showModalAlert('delAlert', data.error, 'error'); return; }
+
+  closeDeleteModal();
+  await Promise.all([loadGrades(), loadStudents()]);
+  showAlert('alertBox', data.message, 'success');
+}
+
+// ── MODAL BACKDROP CLOSE ───────────────────────────────────────────────────
+['profileModal','passwordModal','deleteModal'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    if (e.target === e.currentTarget) {
+      if (id === 'profileModal')  closeProfileModal();
+      if (id === 'passwordModal') closePasswordModal();
+      if (id === 'deleteModal')   closeDeleteModal();
+    }
+  });
+});
+
+// ── UTILITIES ──────────────────────────────────────────────────────────────
+function gradeToLetter(grade) {
+  if (grade >= 90) return { letter: 'A', cls: 'grade-a' };
+  if (grade >= 80) return { letter: 'B', cls: 'grade-b' };
+  if (grade >= 70) return { letter: 'C', cls: 'grade-c' };
+  return { letter: 'D', cls: 'grade-d' };
+}
+
+function showAlert(id, message, type) {
+  const box = document.getElementById(id);
+  box.className = `alert alert-${type}`;
+  box.innerHTML = (type === 'error' ? '⚠️ ' : '✓ ') + message;
+  box.style.display = 'flex';
+  if (type === 'success') setTimeout(() => { box.style.display = 'none'; }, 4000);
+}
+
+function showModalAlert(id, message, type) {
+  const el = document.getElementById(id);
+  el.className = `alert alert-${type}`;
+  el.innerHTML = (type === 'error' ? '⚠️ ' : '✓ ') + message;
+  el.style.display = 'flex';
+}
+
+function hideModalAlert(id) {
+  const el = document.getElementById(id);
+  el.style.display = 'none';
+}
+
+async function logout() {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/pages/login.html';
+}
+</script>
+</body>
+</html>
