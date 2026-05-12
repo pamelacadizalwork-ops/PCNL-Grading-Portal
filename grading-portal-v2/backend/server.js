@@ -4,12 +4,19 @@
 const fs = require('fs');
 const path = require('path');
 
-console.log('__dirname =', __dirname);
+console.log('CURRENT DIR:', __dirname);
 
-const loginPath = path.join(__dirname, 'frontend/pages/login.html');
+console.log(
+  'FILES:',
+  fs.readdirSync(__dirname)
+);
 
-console.log('loginPath =', loginPath);
-console.log('exists =', fs.existsSync(loginPath));
+if (fs.existsSync(path.join(__dirname, 'frontend'))) {
+  console.log(
+    'FRONTEND FILES:',
+    fs.readdirSync(path.join(__dirname, 'frontend'))
+  );
+}
 const express = require('express');
 const session = require('express-session');
 const cors    = require('cors');
