@@ -39,7 +39,7 @@ app.use('/api/student', studentRoutes);
 
 // ── CATCH-ALL (SPA fallback) ─────────────────
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/login.html'));
+  res.sendFile(path.join(__dirname, 'grading-portal-v2/frontend/login.html'));
 });
 
 // ── GLOBAL ERROR HANDLER ─────────────────────
