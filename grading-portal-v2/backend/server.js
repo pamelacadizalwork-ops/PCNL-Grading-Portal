@@ -1,6 +1,15 @@
 // server.js — Grading Portal v2 entry point
 // Run: node server.js  (or: npm start)
 
+const fs = require('fs');
+const path = require('path');
+
+console.log('__dirname =', __dirname);
+
+const loginPath = path.join(__dirname, 'frontend/pages/login.html');
+
+console.log('loginPath =', loginPath);
+console.log('exists =', fs.existsSync(loginPath));
 const express = require('express');
 const session = require('express-session');
 const cors    = require('cors');
@@ -39,7 +48,7 @@ app.use('/api/student', studentRoutes);
 
 // ── CATCH-ALL (SPA fallback) ─────────────────
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../backend/frontend/pages/login.html'));
+  res.sendFile(path.join(__dirname, '../frontend/pages/login.html'));
  });
 
 // ── GLOBAL ERROR HANDLER ─────────────────────
