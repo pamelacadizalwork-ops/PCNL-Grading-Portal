@@ -40,7 +40,8 @@ app.use('/api/student', studentRoutes);
 // ── CATCH-ALL (SPA fallback) ─────────────────
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/pages/login.html'));
-  
+ });
+
 // ── GLOBAL ERROR HANDLER ─────────────────────
 app.use((err, req, res, next) => {
   console.error('[Error]', err.message);
