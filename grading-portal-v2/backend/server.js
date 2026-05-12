@@ -42,9 +42,11 @@ app.use(session({
 }));
 
 // ─────────────────────────────────────────────
-// STATIC FILES
+// FRONTEND FILES
 // ─────────────────────────────────────────────
-app.use(express.static(path.join(__dirname, '../frontend')));
+const frontendPath = path.join(__dirname, 'frontend');
+
+app.use(express.static(frontendPath));
 
 // ─────────────────────────────────────────────
 // API ROUTES
@@ -57,7 +59,7 @@ app.use('/api/student', studentRoutes);
 // SPA FALLBACK
 // ─────────────────────────────────────────────
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend', 'pages', 'login.html'));
+  res.sendFile(path.join(frontendPath, 'pages', 'login.html'));
 });
 
 // ─────────────────────────────────────────────
