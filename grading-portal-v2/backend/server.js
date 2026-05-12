@@ -1,22 +1,6 @@
 // server.js — Grading Portal v2 entry point
 // Run: node server.js  (or: npm start)
 
-const fs = require('fs');
-const path = require('path');
-
-console.log('CURRENT DIR:', __dirname);
-
-console.log(
-  'FILES:',
-  fs.readdirSync(__dirname)
-);
-
-if (fs.existsSync(path.join(__dirname, 'frontend'))) {
-  console.log(
-    'FRONTEND FILES:',
-    fs.readdirSync(path.join(__dirname, 'frontend'))
-  );
-}
 const express = require('express');
 const session = require('express-session');
 const cors    = require('cors');
