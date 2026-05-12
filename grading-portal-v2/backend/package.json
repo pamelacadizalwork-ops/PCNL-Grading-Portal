@@ -4,7 +4,7 @@
   "description": "Online Grading Portal — with teacher profile editing, custom student passwords, and student deletion",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node backend/server.js",
     "dev": "nodemon server.js"
   },
   "dependencies": {
