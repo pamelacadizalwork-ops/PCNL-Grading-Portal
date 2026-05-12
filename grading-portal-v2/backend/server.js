@@ -1,56 +1,86 @@
-// server.js — Grading Portal v2 entry point
-// Run: node server.js  (or: npm start)
+// server.js — Grading Portal v2
+// Run: node server.js
 
 const express = require('express');
 const session = require('express-session');
-const cors    = require('cors');
-const path    = require('path');
+const cors = require('cors');
+const path = require('path');
 
-const authRoutes    = require('./routes/auth');
+const authRoutes = require('./routes/auth');
 const teacherRoutes = require('./routes/teacher');
 const studentRoutes = require('./routes/student');
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ── MIDDLEWARE ───────────────────────────────
+// Railway / reverse proxy support
+app.set('trust proxy', 1);
+
+// ─────────────────────────────────────────────
+// MIDDLEWARE
+// ─────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: true, credentials: true }));
 
+// CORS
+app.use(cors({
+  origin: process.env.CLIENT_URL || true,
+  credentials: true
+}));
+
+// Session config
 app.use(session({
-  secret:            process.env.SESSION_SECRET || 'gradebook-v2-secret-change-me',
-  resave:            false,
+  secret: process.env.SESSION_SECRET || 'gradebook-v2-secret-change-me',
+  resave: false,
   saveUninitialized: false,
   cookie: {
-    httpOnly: true,  // blocks JS access to cookie (XSS protection)
-    secure:   false, // set true in HTTPS production
-    maxAge:   1000 * 60 * 60 * 8 // 8-hour sessions
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 1000 * 60 * 60 * 8 // 8 hours
   }
 }));
 
-// ── STATIC FRONTEND ──────────────────────────
+// ─────────────────────────────────────────────
+// STATIC FILES
+// ─────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// ── API ROUTES ───────────────────────────────
-app.use('/api/auth',    authRoutes);
+// ─────────────────────────────────────────────
+// API ROUTES
+// ─────────────────────────────────────────────
+app.use('/api/auth', authRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
 
-// ── CATCH-ALL (SPA fallback) ─────────────────
+// ─────────────────────────────────────────────
+// SPA FALLBACK
+// ─────────────────────────────────────────────
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend','pages', 'login.html'));
- });
-
-// ── GLOBAL ERROR HANDLER ─────────────────────
-app.use((err, req, res, next) => {
-  console.error('[Error]', err.message);
-  res.status(err.status || 500).json({ error: err.message || 'Internal server error.' });
+  res.sendFile(path.join(__dirname, '../frontend/pages/login.html'));
 });
 
-// ── START ────────────────────────────────────
+// ─────────────────────────────────────────────
+// GLOBAL ERROR HANDLER
+// ─────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error('[Server Error]', err.stack);
+
+  res.status(err.status || 500).json({
+    success: false,
+    error: err.message || 'Internal Server Error'
+  });
+});
+
+// ─────────────────────────────────────────────
+// START SERVER
+// ─────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\n🎓 GradeBook v2 running → http://localhost:${PORT}`);
-  console.log('   Teacher:  username=teacher   password=teach123');
-  console.log('   Students: STU001/pass001  STU002/pass002  STU003/pass003\n');
+  console.log(`\n🎓 GradeBook v2 running on port ${PORT}`);
+  console.log(`🌐 URL: http://localhost:${PORT}`);
+  console.log('Teacher login: teacher / teach123');
+  console.log('Student logins:');
+  console.log('  STU001 / pass001');
+  console.log('  STU002 / pass002');
+  console.log('  STU003 / pass003\n');
 });
